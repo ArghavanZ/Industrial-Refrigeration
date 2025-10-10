@@ -97,13 +97,13 @@ def train(env_cfg, hp_cfg, exp_dir):
     set_random_seed(hp_cfg["seed"])
     # Pass the list of callables directly to SubprocVecEnv
     env = SubprocVecEnv(env_list)
-    env = VecNormalize(env, norm_obs=True, norm_reward=False, clip_obs=10.)
+    env = VecNormalize(env, norm_obs=hp_cfg["train"]["normalize_observations"], norm_reward=hp_cfg["train"]["reward_normalization"], clip_obs=10.)
     env = VecMonitor(env)
 
     eval_env = DummyVecEnv([
         make_env(rank=0, params=env_params, render_mode=None, seed=hp_cfg["seed"]*10000, timelimit=timelimit)
     ])
-    eval_env = VecNormalize(eval_env, norm_obs=True, norm_reward=False, clip_obs=10.)
+    eval_env = VecNormalize(eval_env, norm_obs=hp_cfg["train"]["normalize_observations"], norm_reward=False, clip_obs=10.)
     eval_env = VecMonitor(eval_env)
     eval_env.obs_rms = env.obs_rms.copy()
     eval_env.ret_rms = env.ret_rms.copy()
@@ -353,7 +353,7 @@ def main():
         # create a config specific to the seed we want to run
         hp_cfg = dict(hp_cfg_base)
         hp_cfg['seed'] = seed
-        hp_cfg['run_name'] = f"{param_name}_{hp_name}_{ARGS.run_name}_{seed}_f" 
+        hp_cfg['run_name'] = f"{param_name}_{hp_name}_{ARGS.run_name}_{seed}" 
         # ideally, we do not return anything and process everything after!
         run_seed(env_cfg, hp_cfg , save_dir)   
 
