@@ -1,0 +1,289 @@
+env:
+  name: "Ref_simple" # you can change this so that the result directory reflects the environment name (for example add your name!)
+
+  time_step: 60  # Time step in seconds (1 minute here)[duration of one time step, can be changed to any value in seconds]
+  Total_time: 86400  # Total time in seconds (24 hours)[duration of the episode in seconds, can be changed to any value in seconds to define the episode length]
+
+  Action_space : 
+    - "evaporator_control" #(implemented)
+    # - "suction_temperature" #(implemented)
+    # - "discharge_temperature" #(not implemented)
+
+  Action_type : "discrete"
+
+  Action_mode : "joint"  # "joint" or "separate" (joint: all actions together, separate: each action separately, for discrete for example it makes the action space multidiscrete)
+
+  state_space:
+    - "room_temperatures" # room temperatures (in degree Celsius)[Implemented and is always included]
+    # - "electricity_price" #( implemented, for when we have a window of future prices, not list of possible prices)[No list!]
+    # - "electricity_price_list" # list of future electricity prices (in $ per watt-second) [Implemented if electricity_price_data is not None and price_num > 0]
+    # - "EP_remaining" # remaining time for current electricity price (in seconds) [Implemented if electricity_price_data is not None and is a list of possible data]
+    # - "evaporator_utilization" #(implemented but not tested well)
+    # - "evaporator_on_time" #(implemented but not tested well)
+    # - "evaporator_off_time" #(implemented but not tested well)
+    # - "time_of_day" #(not implemented yet)
+    # - "day_of_week" #(not implemented yet)
+    # - "Ambient_temperature" #(not implemented yet)
+    # - "compressor_status" #(not implemented yet)
+
+
+rooms:
+  #### Room parameters. (EVERY PARAMETERS SHOULD BE A LIST OF LENGTH num_rooms IF NOT NONE!)
+
+  ### Number of rooms in the environment (each has one evaporator)
+  num_rooms : 2 
+
+  #### Room heat disturbance model (per room in watt)
+  ### Q_dist ~ N(mu_dist, sigma_dist) 
+
+  mu_dist : 
+    - 1.165e+5
+    - 1.165e+5
+
+  sigma_dist : ##### not used if uniform distribution is used
+    - 6.29e+4
+    - 6.29e+4
+
+  #### Min and max heat disturbance (in watt)
+  min_dist :
+    - 0
+    - 0
+
+  max_dist :
+    - 2.33e+5
+    - 2.33e+5
+
+  delta_dist : 
+    - 1.165e+5
+    - 1.165e+5
+
+  dist_dist :  # distribution type for heat disturbance ("normal" or "uniform")
+    - "uniform"
+    - "uniform"
+  ####################### Yaml support numbers with e if we wrote them in float format and add sign of the power of ten
+
+  #### Minimum acceptable temperature for each room (in degree Celsius)
+  room_min_temp :  
+    - -22
+    - -22
+  #### Maximum acceptable temperature for each room (in degree Celsius)
+  room_max_temp : 
+    - -16
+    - -16
+
+  ########### what is the state space
+  temperature_space_high : ### [room temperatures in degree Celsius]
+    - -12
+    - -12
+  temperature_space_low :
+    - -28
+    - -28
+
+  #### Cooling capacity of each room ( we may implement a random capacity later as the products in the room can be different)
+  c_room : 
+    - 4.05e+7
+    - 4.05e+7
+
+  #### Initial room temperatures range (in degree Celsius) # [initial value is randomly sampled between these values.]
+  room_init_temp_low :
+    - -22
+    - -22
+  room_init_temp_high :
+    - -16
+    - -16
+
+  Ambient_temperature : 'None'  # Ambient temperature (in degree Celsius)/ If none, our model is not supporting ambient temperature
+
+  c_ambient : 'None' # Ambient temperature capacity (in watt per degree Celsius)/ If none, our model is not supporting ambient temperature
+
+  ### list of evaporators in each room
+  evap_list_id :
+    - [0]
+    - [1]
+
+evaporators: #(EVERY PARAMETERS SHOULD BE A LIST OF LENGTH num_evaps IF NOT NONE!)
+
+  num_evaps: 2 ### Number of evaporators 
+
+  types: # Type of each evaporator (implemented types: "base", "complex")
+    - "base"
+    - "base"
+
+  room_ids:  # List of room IDs corresponding to each evaporator
+    - 0
+    - 1
+
+  on_off_min_constraint: 'None' ### if None, don't apply on/off time constraints ('None', 'Y')
+
+  min_on_time: # Minimum on time for evaporator (in seconds, 10 min)
+    - 600
+    - 600
+
+  min_off_time: # Minimum off time for evaporator (in seconds, one min, one time step)
+    - 60
+    - 60
+
+  #### buffer values for room temperatures (in degree Celsius) before violation for force on/off for each evaporator
+  # low : how far from the lowest acceptable temperature to turn off (T + low)
+  # high : how far from the highest acceptable temperature to turn on (T - high)
+  #[0 if force on/off happens at violation, negative, if we let violation happens and positive, if we force on-off before getting to violation]
+  # None if we do not want to apply this force on/off 
+  # be careful, this shows how close we can get to violation, but if so big, it can cause issues (no acceptable temp room!)
+  on_off_buffer: 'None'  ### if None, don't apply on/off buffer constraints (Y with 0 is different from None, None means no buffer constraints)
+
+  temp_buffer_low :
+    - 0.0
+    - 0.0
+
+  temp_buffer_high :
+    - 0.0
+    - 0.0
+
+
+  ### evaporator parameter (Q_evap =  b_evap * (Troom - Tdischarge)* (on/off)) 
+  ### Evaporator Capacity (Watt per degree Celsius)
+  b_evap :
+    - 2.29e+4
+    - 2.29e+4
+
+
+
+  #### Evaporator utilization constraints
+  util_constraint : 'None' ### no utilization constraints
+  util_per :  # Maximum acceptable utilization percentage
+    - 70
+    - 70
+  util_window : 'None'  # Utilization window (in seconds), instead of the whole episode, it looks at a window of time (not tested yet)
+
+  #### what group the evap is in
+  sequencer: 
+    - "freezer"
+    - "freezer"
+
+sequencers: ### list of sequencers
+
+  seq_list:
+    - "freezer"
+
+  sequence_order: 'None'  ### if None, the order of sequencers does not matter (None, "fixed")
+  fixed_order: 'None'  ### if None, the order of sequencers does not matter (None, list of compressor of the sequence in order)[Not yet decided on how to give the order]
+
+  ### Parameters for each sequencer, (EVERY PARAMETERS SHOULD BE A LIST OF LENGTH seq_list IF NOT NONE!)
+    ### This part depends on the action space
+    ### For joint discrete, we have start and num for each action. 
+    ### If no T_suction action, we are not using these parameters and we only set a fix setpoint for T_suction
+  T_suction_sp : 
+    - -27  # This is the setpoint for the suction temperature, if we want to have a fixed setpoint for the suction temperature. If None, we are using T_suction_start and T_suction_num to determine the suction temperature based on the action.
+  T_suction_start :   # This is the setpoint for the suction temperature, as a base setpoint to choose the suction temperature for the sequencer. 
+    - -29 
+  T_suction_num : # (in degree Celsius) This is the number of discrete setpoints we have for the suction temperature for the sequencer. 
+    - 3  # this means we have -29, -28, -27 as possible setpoints for the suction temperature for the sequencer.
+
+
+compressors:
+
+
+
+  num_compressors: ### number of compressors in each sequencer (THIS SHOULD BE A LIST OF LENGTH seq_list IF NOT NONE!)
+    - 1
+
+
+  freezer: ### freezer compressors  ### All parameters should be a list of length num_compressors for the sequencer
+
+
+    
+    compressor_model:  ##### later will be implemented with different versions.
+      - "base"
+    ### Compressor Capacity parameters
+    ###  Q_max = c_c_coeff * (T_suction - T_suction_rated) + Q_rated
+    ### In watt per degree Celsius
+    c_c_coeff : 
+      - 66666.6667
+
+    ### Compressor rated heat removal at the evaporators (in Watt)
+    Q_rated :
+      - 600000
+
+    #### Compressor rated suction temperature (in degree Celsius)
+    T_suction_rated :
+     - -25
+
+
+    #### Compressor capacity clipping values
+    Q_min_clip :  # Minimum compressor capacity (in Watt)
+      - 1.0e+5
+    Q_max_clip :  # Maximum compressor capacity (in Watt)
+      - 1.5e+6
+
+    ### Compressor power parameters
+    ###  W_rated =  -0.2*T_suction_rated^2 + 0.2*T_suction_rated + alpha
+    ###  W_max =  -0.2*T_suction^2 + 0.2*T_suction + alpha
+    # (in Watt per degree Celsius squared)
+    c_w_coeff1  : 
+      - -70
+
+    # (in Watt per degree Celsius)
+    c_w_coeff2  : 
+      - 0
+
+    ### Compressor rated power consumption (in Watt)
+    W_rated :   # in Watt
+      - 1.0e+5
+
+    #### clipping values
+    W_min_clip : 
+      - 8.0e+4
+
+    #### Compressor power-capacity model 
+    ### (W / W_max) = c_coeff1 * (Q_evap_total / Q_max) + c_coeff2 * (on/off))
+
+    c_coeff1 : 
+      - 0.61
+    c_coeff2 : 
+      - 0.39
+
+
+    #### Discharge temperature of the evaporator (assumed constant and not implemented yet)
+    T_discharge : None #not implemented yet
+
+
+
+
+  
+
+reward: 
+  ### Temperature penalty (considering different penalty for max and min temperature violations)
+  ### (in $ per degree Celsius)
+  temp_penalty : ### (low, high) for each room
+
+    low:
+      - 0.0
+      - 0.0
+    high:
+      - 10
+      - 10
+
+    
+
+  ### Electricity price parameters
+  #### Initial electricity price (in $ per watt-second) [This part depends on the observation space as well]
+
+  electricity_price : 1.0e-8 ### if we are not using electricity price data but a fixed electricity price or for initial price. 
+
+  electricity_price_data : "None"  # if None, we are not using electricity price data, if a string, it is the path to the npz file containing the electricity price data (in $ per watt-second) [This part depends on the observation space as well]
+
+  # if a list of possible prices, number shows the length of list. If a window of future prices, it is the length of the window.
+  price_num : 30  ### number of future prices we are adding to the state space [if electricity_price_data is not None and is a list of possible data]
+
+  min_price : 1.0e-8  ### minimum electricity price (in $ per watt-second) for normalizing the electricity price in the state space
+  max_price : 5.0e-8  ### maximum electricity price (in $ per watt-second) for normalizing the electricity price in the state space
+
+  reward_type : "linear" # "linear or quadratic"  ### type of reward function
+
+  #### 
+
+  #### Reward scale  (in $) to scale the reward to a reasonable range (for example between -1 and 1)
+  reward_scale : 10
+
+
+  utilization_penalty : None # if none, it means we either not considering the utilization constraints or we are forcing it instead of having a penalty. 
