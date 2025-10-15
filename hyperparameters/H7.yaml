@@ -1,0 +1,38 @@
+# meta-parameters
+project_name : ''
+run_name : ''
+seed: ''
+device: 'cpu'
+
+model:
+  name: 'PPO'
+  net_arch: [64, 64]            # Larger network (two layers of size 64) [possible to do {pi: [128, 128], vf: [256, 256]} as complicated architecture]
+  policy: "MultiInputPolicy"      # Multi-Layer Perceptron policy
+  learning_rate: 3e-4             # Stable learning rate for PPO
+  learning_rate_end: 1e-5         # Final learning rate for annealing (use the same as if you want constant LR)
+  n_steps: 4096                   # Number of steps before updating
+  batch_size: 128                  # Minibatch size
+  n_epochs: 10                    # PPO epochs per update
+  gamma: 0.99                     # Discount factor
+  gae_lambda: 0.95                # GAE smoothing factor
+  clip_range: [0.2, 0.1]          # PPO clip range one value for constant, two or more for piecewise
+  clip_progress: [0.8]           # Progress values for piecewise clipping, must be one less than clip_range length, None for constant
+  ent_coef: 0.05                 # Entropy coefficient (for exploration)
+  vf_coef: 0.5                    # Value function loss coefficient
+  max_grad_norm: 0.5              # Gradient clipping for stability
+  tensorboard_log: "PPO"
+  verbose: 2
+
+env_setup:
+  num_proc: 4
+  timelimit: 1024  # Time limit for each environment step in seconds
+
+algo:
+  name: "default"
+  total_timesteps: 30000000         # Total training steps
+  log_interval: 1                
+
+train:
+  reward_normalization: True   # Normalize rewards (can help with stability)
+  normalize_observations: True  # Normalize observations (can help with stability)
+                

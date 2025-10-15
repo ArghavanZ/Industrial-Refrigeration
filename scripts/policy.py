@@ -622,9 +622,9 @@ class RL_Trajectory(base_Trajectory):
             save_dict["price"] = price  
 
         ###### Sequencer [ group_num ]
-        if "suction_temperature" in self.action_space:
-            T_suction = np.zeros(shape=(self.n_seed, self.n_ep,  self.timelimit+1))
-            save_dict["T_suction"] = T_suction
+        
+        T_suction = np.zeros(shape=(self.n_seed, self.n_ep, self.group_num, self.timelimit+1))
+        save_dict["T_suction"] = T_suction
 
         overloaded = np.zeros(shape=(self.n_seed, self.n_ep, self.group_num, self.timelimit+1), dtype=bool)
         save_dict["overloaded"] = overloaded
@@ -700,8 +700,9 @@ class RL_Trajectory(base_Trajectory):
                 Q_max_clipped[seed, ep, :, t] = info["Q_max_clip"]
                 
                 # group info 
+                
                 T_suction[seed, ep, :, t] = info["T_suction"]
-                overloaded[seed, ep, t] = info["overloaded"]
+                overloaded[seed, ep, :, t] = info["overloaded"]
 
                 
 
@@ -736,7 +737,7 @@ class RL_Trajectory(base_Trajectory):
 
                     # group info
                     T_suction[seed, ep, :, t] = info["T_suction"]
-                    overloaded[seed, ep, t] = info["overloaded"]
+                    overloaded[seed, ep, :, t] = info["overloaded"]
 
                     #### E_price info 
                     if "electricity_price_list" in self.state_space:
@@ -858,9 +859,9 @@ class Simple_Trajectory(base_Trajectory):
             save_dict["price"] = price  
 
         ###### Sequencer [ group_num ]
-        if "suction_temperature" in self.action_space:
-            T_suction = np.zeros(shape=(self.n_seed, self.n_ep,  self.timelimit+1))
-            save_dict["T_suction"] = T_suction
+
+        T_suction = np.zeros(shape=(self.n_seed, self.n_ep, self.group_num, self.timelimit+1))
+        save_dict["T_suction"] = T_suction
 
         overloaded = np.zeros(shape=(self.n_seed, self.n_ep, self.group_num, self.timelimit+1), dtype=bool)
         save_dict["overloaded"] = overloaded
@@ -935,7 +936,7 @@ class Simple_Trajectory(base_Trajectory):
                 
                 # group info 
                 T_suction[seed, ep, :, t] = info["T_suction"]
-                overloaded[seed, ep, t] = info["overloaded"]
+                overloaded[seed, ep, :, t] = info["overloaded"]
 
                 
 
@@ -970,7 +971,7 @@ class Simple_Trajectory(base_Trajectory):
 
                     # group info
                     T_suction[seed, ep, :, t] = info["T_suction"]
-                    overloaded[seed, ep, t] = info["overloaded"]
+                    overloaded[seed, ep, :, t] = info["overloaded"]
 
                     #### E_price info 
                     if "electricity_price_list" in self.state_space:
@@ -1092,9 +1093,9 @@ class EP_Trajectory(base_Trajectory):
             save_dict["price"] = price  
 
         ###### Sequencer [ group_num ]
-        if "suction_temperature" in self.action_space:
-            T_suction = np.zeros(shape=(self.n_seed, self.n_ep,  self.timelimit+1))
-            save_dict["T_suction"] = T_suction
+
+        T_suction = np.zeros(shape=(self.n_seed, self.n_ep, self.group_num, self.timelimit+1))
+        save_dict["T_suction"] = T_suction
 
         overloaded = np.zeros(shape=(self.n_seed, self.n_ep, self.group_num, self.timelimit+1), dtype=bool)
         save_dict["overloaded"] = overloaded
@@ -1169,7 +1170,7 @@ class EP_Trajectory(base_Trajectory):
                 
                 # group info 
                 T_suction[seed, ep, :, t] = info["T_suction"]
-                overloaded[seed, ep, t] = info["overloaded"]
+                overloaded[seed, ep, :, t] = info["overloaded"]
 
                 
 
@@ -1204,7 +1205,7 @@ class EP_Trajectory(base_Trajectory):
 
                     # group info
                     T_suction[seed, ep, :, t] = info["T_suction"]
-                    overloaded[seed, ep, t] = info["overloaded"]
+                    overloaded[seed, ep, :, t] = info["overloaded"]
 
                     #### E_price info 
                     if "electricity_price_list" in self.state_space:
@@ -1338,9 +1339,9 @@ class Tsuction_Trajectory(base_Trajectory):
             save_dict["price"] = price  
 
         ###### Sequencer [ group_num ]
-        if "suction_temperature" in self.action_space:
-            T_suction = np.zeros(shape=(self.n_seed, self.n_ep,  self.timelimit+1))
-            save_dict["T_suction"] = T_suction
+
+        T_suction = np.zeros(shape=(self.n_seed, self.n_ep, self.group_num, self.timelimit+1))
+        save_dict["T_suction"] = T_suction
 
         overloaded = np.zeros(shape=(self.n_seed, self.n_ep, self.group_num, self.timelimit+1), dtype=bool)
         save_dict["overloaded"] = overloaded
@@ -1417,7 +1418,7 @@ class Tsuction_Trajectory(base_Trajectory):
                 
                 # group info 
                 T_suction[seed, ep, :, t] = info["T_suction"]
-                overloaded[seed, ep, t] = info["overloaded"]
+                overloaded[seed, ep, :, t] = info["overloaded"]
 
                 
 
@@ -1452,7 +1453,7 @@ class Tsuction_Trajectory(base_Trajectory):
 
                     # group info
                     T_suction[seed, ep, :, t] = info["T_suction"]
-                    overloaded[seed, ep, t] = info["overloaded"]
+                    overloaded[seed, ep, :, t] = info["overloaded"]
 
                     #### E_price info 
                     if "electricity_price_list" in self.state_space:
@@ -1502,13 +1503,14 @@ def main():
 
     if  policy_cfg["policy"]["name"] == "RL":
     #### Load configurations of hyperparameters 
-        with open(f"{ROOT}/{ARGS.H_path}", 'r') as f:
+        with open(f"{ROOT}/{ARGS.HP_path}", 'r') as f:
             hp_cfg = yaml.load(f, Loader=yaml.SafeLoader)
-    else:
-        hp_cfg = None
         hp_name = ARGS.HP_path.split('/')[-1].split('.')[0]
         algo = hp_cfg['model']['name']
             
+    else:
+        hp_cfg = None
+        
 
 
     
