@@ -586,7 +586,7 @@ class RL_Trajectory(base_Trajectory):
         save_dict["Q_dist"] = Q_dist
 
 
-        is_violated = np.zeros(shape=(self.n_seed, self.n_ep, self.room_num, self.timelimit+1), dtype=bool)
+        is_violated = np.zeros(shape=(self.n_seed, self.n_ep, self.room_num, self.timelimit+1, 2), dtype=bool)
         save_dict["is_violated"] = is_violated
 
         ##### evaporator [ evap_num ]
@@ -678,7 +678,8 @@ class RL_Trajectory(base_Trajectory):
 
                 #### Room info
                 room_temps[seed, ep, :, t] = obs["room_temperatures"]
-                is_violated[seed, ep, :, t] = (room_temps[seed, ep, :, t] > self.max_room_temp[:]) | (room_temps[seed, ep, :, t] < self.min_room_temp[:])
+                is_violated[seed, ep, :, t , 0] = (room_temps[seed, ep, :, t] > self.max_room_temp[:])
+                is_violated[seed, ep, :, t , 1] = (room_temps[seed, ep, :, t] < self.min_room_temp[:])
                 Q_dist[seed, ep, :, t] = info["Q_dist"]
 
                 ### Evaporator info
@@ -713,7 +714,8 @@ class RL_Trajectory(base_Trajectory):
 
                     #### Room info
                     room_temps[seed, ep, :, t] = obs["room_temperatures"]
-                    is_violated[seed, ep, :, t] = (room_temps[seed, ep, :, t] > self.max_room_temp[:]) | (room_temps[seed, ep, :, t] < self.min_room_temp[:])
+                    is_violated[seed, ep, :, t , 0] = (room_temps[seed, ep, :, t] > self.max_room_temp[:])
+                    is_violated[seed, ep, :, t , 1] = (room_temps[seed, ep, :, t] < self.min_room_temp[:])
                     Q_dist[seed, ep, :, t] = info["Q_dist"]
 
 
@@ -760,7 +762,7 @@ class RL_Trajectory(base_Trajectory):
 
         mean_reward = np.mean(ep_cost) #Avg reward
         std_reward = np.std(ep_cost) #Std reward (not really reliable)
-        violation_num = np.sum(is_violated[:, :, :, :], axis=(0, 1, 3)) #Number of violations for each room
+        violation_num = np.sum(is_violated[:, :, :, : , :], axis=(0, 1, 3)) #Number of violations for each room
         on_time = np.mean(on_off[:, :, :, :] > 0, axis=(0, 1, 3)) #Average on time for each room (fan speed!)
         off_time = np.sum(on_off[:, :, :, :] == 0, axis=(0, 1, 3)) #Total off time for each room
         Avg_room_temp = np.mean(room_temps[:, :, :, :], axis=(0, 1, 3)) #Average room temperature for each room
@@ -823,7 +825,7 @@ class Simple_Trajectory(base_Trajectory):
         save_dict["Q_dist"] = Q_dist
 
 
-        is_violated = np.zeros(shape=(self.n_seed, self.n_ep, self.room_num, self.timelimit+1), dtype=bool)
+        is_violated = np.zeros(shape=(self.n_seed, self.n_ep, self.room_num, self.timelimit+1, 2), dtype=bool)
         save_dict["is_violated"] = is_violated
 
         ##### evaporator [ evap_num ]
@@ -913,7 +915,8 @@ class Simple_Trajectory(base_Trajectory):
 
                 #### Room info
                 room_temps[seed, ep, :, t] = obs["room_temperatures"]
-                is_violated[seed, ep, :, t] = (room_temps[seed, ep, :, t] > self.max_room_temp[:]) | (room_temps[seed, ep, :, t] < self.min_room_temp[:])
+                is_violated[seed, ep, :, t , 0] = (room_temps[seed, ep, :, t] > self.max_room_temp[:])
+                is_violated[seed, ep, :, t , 1] = (room_temps[seed, ep, :, t] < self.min_room_temp[:])
                 Q_dist[seed, ep, :, t] = info["Q_dist"]
 
                 ### Evaporator info
@@ -947,7 +950,8 @@ class Simple_Trajectory(base_Trajectory):
 
                     #### Room info
                     room_temps[seed, ep, :, t] = obs["room_temperatures"]
-                    is_violated[seed, ep, :, t] = (room_temps[seed, ep, :, t] > self.max_room_temp[:]) | (room_temps[seed, ep, :, t] < self.min_room_temp[:])
+                    is_violated[seed, ep, :, t , 0] = (room_temps[seed, ep, :, t] > self.max_room_temp[:])
+                    is_violated[seed, ep, :, t , 1] = (room_temps[seed, ep, :, t] < self.min_room_temp[:])
                     Q_dist[seed, ep, :, t] = info["Q_dist"]
 
 
@@ -994,7 +998,7 @@ class Simple_Trajectory(base_Trajectory):
 
         mean_reward = np.mean(ep_cost) #Avg reward
         std_reward = np.std(ep_cost) #Std reward (not really reliable)
-        violation_num = np.sum(is_violated[:, :, :, :], axis=(0, 1, 3)) #Number of violations for each room
+        violation_num = np.sum(is_violated[:, :, :, :, :], axis=(0, 1, 3)) #Number of violations for each room
         on_time = np.mean(on_off[:, :, :, :] > 0, axis=(0, 1, 3)) #Average on time for each room (fan speed!)
         off_time = np.sum(on_off[:, :, :, :] == 0, axis=(0, 1, 3)) #Total off time for each room
         Avg_room_temp = np.mean(room_temps[:, :, :, :], axis=(0, 1, 3)) #Average room temperature for each room
@@ -1057,7 +1061,7 @@ class EP_Trajectory(base_Trajectory):
         save_dict["Q_dist"] = Q_dist
 
 
-        is_violated = np.zeros(shape=(self.n_seed, self.n_ep, self.room_num, self.timelimit+1), dtype=bool)
+        is_violated = np.zeros(shape=(self.n_seed, self.n_ep, self.room_num, self.timelimit+1 , 2), dtype=bool)
         save_dict["is_violated"] = is_violated
 
         ##### evaporator [ evap_num ]
@@ -1147,7 +1151,8 @@ class EP_Trajectory(base_Trajectory):
 
                 #### Room info
                 room_temps[seed, ep, :, t] = obs["room_temperatures"]
-                is_violated[seed, ep, :, t] = (room_temps[seed, ep, :, t] > self.max_room_temp[:]) | (room_temps[seed, ep, :, t] < self.min_room_temp[:])
+                is_violated[seed, ep, :, t , 0] = (room_temps[seed, ep, :, t] > self.max_room_temp[:])
+                is_violated[seed, ep, :, t , 1] = (room_temps[seed, ep, :, t] < self.min_room_temp[:])
                 Q_dist[seed, ep, :, t] = info["Q_dist"]
 
                 ### Evaporator info
@@ -1181,7 +1186,8 @@ class EP_Trajectory(base_Trajectory):
 
                     #### Room info
                     room_temps[seed, ep, :, t] = obs["room_temperatures"]
-                    is_violated[seed, ep, :, t] = (room_temps[seed, ep, :, t] > self.max_room_temp[:]) | (room_temps[seed, ep, :, t] < self.min_room_temp[:])
+                    is_violated[seed, ep, :, t , 0] = (room_temps[seed, ep, :, t] > self.max_room_temp[:])
+                    is_violated[seed, ep, :, t , 1] = (room_temps[seed, ep, :, t] < self.min_room_temp[:])
                     Q_dist[seed, ep, :, t] = info["Q_dist"]
 
 
@@ -1228,7 +1234,7 @@ class EP_Trajectory(base_Trajectory):
 
         mean_reward = np.mean(ep_cost) #Avg reward
         std_reward = np.std(ep_cost) #Std reward (not really reliable)
-        violation_num = np.sum(is_violated[:, :, :, :], axis=(0, 1, 3)) #Number of violations for each room
+        violation_num = np.sum(is_violated[:, :, :, : , :], axis=(0, 1, 3)) #Number of violations for each room
         on_time = np.mean(on_off[:, :, :, :] > 0, axis=(0, 1, 3)) #Average on time for each room (fan speed!)
         off_time = np.sum(on_off[:, :, :, :] == 0, axis=(0, 1, 3)) #Total off time for each room
         Avg_room_temp = np.mean(room_temps[:, :, :, :], axis=(0, 1, 3)) #Average room temperature for each room
@@ -1303,7 +1309,7 @@ class Tsuction_Trajectory(base_Trajectory):
         save_dict["Q_dist"] = Q_dist
 
 
-        is_violated = np.zeros(shape=(self.n_seed, self.n_ep, self.room_num, self.timelimit+1), dtype=bool)
+        is_violated = np.zeros(shape=(self.n_seed, self.n_ep, self.room_num, self.timelimit+1 , 2), dtype=bool)
         save_dict["is_violated"] = is_violated
 
         ##### evaporator [ evap_num ]
@@ -1395,7 +1401,8 @@ class Tsuction_Trajectory(base_Trajectory):
 
                 #### Room info
                 room_temps[seed, ep, :, t] = obs["room_temperatures"]
-                is_violated[seed, ep, :, t] = (room_temps[seed, ep, :, t] > self.max_room_temp[:]) | (room_temps[seed, ep, :, t] < self.min_room_temp[:])
+                is_violated[seed, ep, :, t , 0] = (room_temps[seed, ep, :, t] > self.max_room_temp[:])
+                is_violated[seed, ep, :, t , 1] = (room_temps[seed, ep, :, t] < self.min_room_temp[:])
                 Q_dist[seed, ep, :, t] = info["Q_dist"]
 
                 ### Evaporator info
@@ -1429,7 +1436,8 @@ class Tsuction_Trajectory(base_Trajectory):
 
                     #### Room info
                     room_temps[seed, ep, :, t] = obs["room_temperatures"]
-                    is_violated[seed, ep, :, t] = (room_temps[seed, ep, :, t] > self.max_room_temp[:]) | (room_temps[seed, ep, :, t] < self.min_room_temp[:])
+                    is_violated[seed, ep, :, t , 0] = (room_temps[seed, ep, :, t] > self.max_room_temp[:])
+                    is_violated[seed, ep, :, t , 1] = (room_temps[seed, ep, :, t] < self.min_room_temp[:])
                     Q_dist[seed, ep, :, t] = info["Q_dist"]
 
 
@@ -1476,7 +1484,7 @@ class Tsuction_Trajectory(base_Trajectory):
 
         mean_reward = np.mean(ep_cost) #Avg reward
         std_reward = np.std(ep_cost) #Std reward (not really reliable)
-        violation_num = np.sum(is_violated[:, :, :, :], axis=(0, 1, 3)) #Number of violations for each room
+        violation_num = np.sum(is_violated[:, :, :, : ,:], axis=(0, 1, 3)) #Number of violations for each room
         on_time = np.mean(on_off[:, :, :, :] > 0, axis=(0, 1, 3)) #Average on time for each room (fan speed!)
         off_time = np.sum(on_off[:, :, :, :] == 0, axis=(0, 1, 3)) #Total off time for each room
         Avg_room_temp = np.mean(room_temps[:, :, :, :], axis=(0, 1, 3)) #Average room temperature for each room

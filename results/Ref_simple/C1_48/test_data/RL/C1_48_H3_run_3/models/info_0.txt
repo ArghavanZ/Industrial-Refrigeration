@@ -1,0 +1,44 @@
+Policy name: RL
+Number of episodes: 30
+Number of seeds: 20
+Start seed: 0
+Environment parameters:
+env: {'name': 'Ref_simple', 'time_step': 60, 'Total_time': 61440, 'Action_space': ['evaporator_control'], 'Action_type': 'discrete', 'Action_mode': 'joint', 'state_space': ['room_temperatures']}
+rooms: {'num_rooms': 2, 'mu_dist': [150000.0, 150000.0], 'sigma_dist': [62900.0, 62900.0], 'min_dist': [0, 0], 'max_dist': [300000.0, 300000.0], 'delta_dist': [150000.0, 150000.0], 'dist_dist': ['uniform', 'uniform'], 'room_min_temp': [-22, -22], 'room_max_temp': [-16, -16], 'temperature_space_high': [-12, -12], 'temperature_space_low': [-28, -28], 'c_room': [40500000.0, 40500000.0], 'room_init_temp_low': [-22, -22], 'room_init_temp_high': [-16, -16], 'Ambient_temperature': 'None', 'c_ambient': 'None', 'evap_list_id': [[0], [1]]}
+evaporators: {'num_evaps': 2, 'types': ['base', 'base'], 'room_ids': [0, 1], 'on_off_min_constraint': 'None', 'min_on_time': [600, 600], 'min_off_time': [60, 60], 'on_off_buffer': 'None', 'temp_buffer_low': [0.0, 0.0], 'temp_buffer_high': [0.0, 0.0], 'b_evap': [22900.0, 22900.0], 'util_constraint': 'None', 'util_per': [70, 70], 'util_window': 'None', 'sequencer': ['freezer', 'freezer']}
+sequencers: {'seq_list': ['freezer'], 'sequence_order': 'None', 'fixed_order': 'None', 'T_suction_sp': [-27], 'T_suction_start': [-29], 'T_suction_num': [3]}
+compressors: {'num_compressors': [1], 'freezer': {'compressor_model': ['base'], 'c_c_coeff': [66666.6667], 'Q_rated': [600000], 'T_suction_rated': [-25], 'Q_min_clip': [100000.0], 'Q_max_clip': [1500000.0], 'c_w_coeff1': [-70], 'c_w_coeff2': [0], 'W_rated': [100000.0], 'W_min_clip': [80000.0], 'c_coeff1': [0.61], 'c_coeff2': [0.39], 'T_discharge': 'None'}}
+reward: {'temp_penalty': {'low': [0.0, 0.0], 'high': [1.0, 1.0]}, 'electricity_price': 1e-08, 'electricity_price_data': 'None', 'price_num': 30, 'min_price': 1e-08, 'max_price': 5e-08, 'reward_type': 'linear', 'reward_scale': 1, 'utilization_penalty': 'None'}
+Evaluation results:
+Mean reward over 600 episodes: -39.56750146206007
+Std reward over 600 episodes: 1.75875868933271
+Violation number for each room over 600 episodes: [[15  5]
+ [55  0]]
+Average on time for each evaporator over 600 episodes: [64.95284553 62.85788618]
+Total off time for each evaporator over 600 episodes: [215540 228424]
+Average room temperature for each room over 600 episodes: [-16.95142858 -16.65801996]
+Model: /Users/arghavanzibaie/Documents/GitHub/Industrial-Refrigeration/results/Ref_simple/C1_48/RL_Model/PPO/C1_48_H3_run_3/models/model.zip
+Algorithm: PPO
+Hyperparameters:
+- model:
+  name: PPO
+  net_arch: [64, 64]
+  policy: MultiInputPolicy
+  learning_rate: 3e-4
+  learning_rate_end: 1e-5
+  n_steps: 4096
+  batch_size: 128
+  n_epochs: 10
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_range: [0.2, 0.1]
+  clip_progress: [0.8]
+  ent_coef: 0.01
+  vf_coef: 0.5
+  max_grad_norm: 0.5
+  tensorboard_log: PPO
+  verbose: 2
+- environment setup:
+ Number of parallel processes: 4
+ Timelimit: 1024
+ total_timesteps: 15000000

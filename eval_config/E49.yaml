@@ -1,0 +1,42 @@
+policy:
+  
+  name: "couple_threshold"  # Possible names: RL, couple, couple_threshold,  bang_bang, EP_couple, MPC, bang_bang_T_suction
+  type: "simple"    # Possible types: base, Eprice, Tsuction and ... [Each depends what observation and action space we have]
+  
+  
+  
+  ### These parameters should be compatible with the env_config file [For simpler run, we give the config later]
+  # If Coupled or bangbang, we set a high and low threshold (The difference is the deadband and no T_room_setpoint as we cannot control it directly)
+  high_threshold: 
+    - -17.1 # High threshold for room temperature (in degree Celsius)
+    - -17.1  # High threshold for room temperature (in degree Celsius)
+
+  low_threshold: ### only means for bangbang and keep or threshold mode of couple
+    - -20  # Low threshold for room temperature (in degree Celsius)
+    - -20  # Low threshold for room temperature (in degree Celsius)
+
+  price_offset: 
+    - 0.0  # themperature offset for each room (in degree Celsius) when we have Eprice type
+    - 0.0  # themperature offset for each room (in degree Celsius) when we have Eprice type
+
+  look_ahead:   # look ahead steps for Eprice type (each step is 15 minutes, so 4 steps is one hour)
+
+  #### IF RL POLICY, we have a model amn mode to load
+
+  #### IF WE WANT A COMBINATION, we have a  list of models and their modes.
+  model_name:
+    - "None"  # Path to the trained model (None if not using RL policy)
+  
+  model_mode: 
+    - "None"  # Mode of the trained model (None if not using RL policy), Possible modes: best, models or checkpoint
+
+  mode_timestep: 
+    - 0  # Timestep to of the checkpoint (0 if not using RL policy or not using checkpoint mode)
+
+
+run: 
+
+  n_seeds: 20  # Random seed for evaluation
+  start_seed: 0 # Starting random seed for evaluation
+  n_episodes: 30  # Number of episodes to evaluate the policy [mostly to capture 30 days but depends on the length of each episode]
+  save: True # Save the data after evaluation

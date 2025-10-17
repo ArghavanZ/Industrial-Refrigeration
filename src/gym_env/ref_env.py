@@ -8,7 +8,50 @@ from stable_baselines3.common.utils import set_random_seed
 from helpers import helper as h ### helper functions to make devices and rooms
 from helpers import device as d ### device classes
 
+class state_counter(gym.Wrapper): 
+    '''
+    Wrapper to count the number of times each state has been visited.
+    Note: this is a very naive implementation and may not scale well with large state spaces.
+    '''
+    def __init__(self, env , key: str = "room_temperatures",low = -22.1, high = -15.9, bin = 62):
+        super().__init__(env)
+        self.N = int(bin)
+        self.counter = np.zeros((self.N, self.N), dtype=np.int64)
+        self.key = key
+        self.room_vals = np.linspace(low, high, num=self.N, dtype=np.float64)
+        self.V_MIN, self.V_MAX = float(self.room_vals[0]), float(self.room_vals[-1])
+        self.DX = (self.V_MAX - self.V_MIN) / (self.N - 1)
 
+    def reset(self, **kwargs):
+        obs, info = self.env.reset(**kwargs)
+        self._bump(obs)
+        return obs, info
+    
+    def value_to_index(self, x: float) -> int:
+        idx = int(round((x - self.V_MIN) / self.DX))
+        return int(np.clip(idx, 0, self.N - 1))
+
+    def snap2grid(self, x: float) -> float:
+        return self.room_vals[self.value_to_index(x)]
+    
+
+    def _bump (self, obs ):
+        room_temps = np.asarray(obs["room_temperatures"]).copy()
+        i =  self.value_to_index(room_temps[0])
+        j =  self.value_to_index(room_temps[1])
+        self.counter[i,j]+=1
+
+
+    def step(self, action):
+        obs, reward, terminated, truncated, info = self.env.step(action)
+        self._bump(obs)
+        return obs, reward, terminated, truncated, info
+    
+    def get_counter(self) -> np.ndarray:
+        return self.counter
+    
+    def save_npz(self, path: str):
+        np.savez_compressed(path, grid=self.counter)
 
 def make_env(params: dict, 
              render_mode: str = None, 

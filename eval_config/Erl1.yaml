@@ -1,0 +1,33 @@
+policy:
+  
+  name: "RL"  # Possible names: RL, couple, MPC, bangbang
+  type: "RL"    # Possible types: base, Eprice, Tsuction and ... [Each depends what observation and action space we have]
+  
+
+  
+  ### These parameters should be compatible with the env_config file [For simpler run, we give the config later]
+  # If Coupled or bangbang, we set a high and low threshold (The difference is the deadband and no T_room_setpoint as we cannot control it directly)
+  T_room_high_threshold: 
+    - 'None'  # High threshold for room temperature (in degree Celsius)
+    - 'None'  # High threshold for room temperature (in degree Celsius)
+
+  T_room_low_threshold: ### only means for bangbang and keep or threshold mode of couple
+    - 'None'  # Low threshold for room temperature (in degree Celsius)
+    - 'None'  # Low threshold for room temperature (in degree Celsius)
+
+
+  #### IF RL POLICY, we have a model amn mode to load
+
+  #### IF WE WANT A COMBINATION, we have a  list of models and their modes.(not implemented yet)
+  model_name: "C1_42_H3_run_4"  # Path to the trained model (None if not using RL policy)
+  
+  model_mode:  "models"  # Mode of the trained model (None if not using RL policy), Possible modes: best, models or checkpoint
+
+  mode_timestep: 0  # Timestep to of the checkpoint (0 if not using RL policy or not using checkpoint mode)
+
+run: 
+
+  n_seeds: 20  # Random seed for evaluation
+  start_seed: 0 # Starting random seed for evaluation
+  n_episodes: 30  # Number of episodes to evaluate the policy [mostly to capture 30 days but depends on the length of each episode]
+  save: True # Save the data after evaluation
