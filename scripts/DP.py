@@ -110,7 +110,7 @@ class env:
         # Snap to grid
         i2 = value_to_index(float(T_next[0]))
         j2 = value_to_index(float(T_next[1]))
-        return (i2, j2), reward
+        return (i2, j2), reward*10
 
 # ----------------- DP (with Monte Carlo expectation) -----------------
 class DPAgent:
@@ -152,7 +152,7 @@ class DPAgent:
             if synchronous:
                 self.V[:, :] = V_new
                 if iter % 1000 == 0:
-                    np.savez("DP_middle_acc.npz", V_vi=self.V, Pi_vi=self.pi)
+                    np.savez("DP_middle_0_150.npz", V_vi=self.V, Pi_vi=self.pi)
             if delta < theta:
                 break
         return self.V, self.pi
@@ -199,8 +199,8 @@ if __name__ == "__main__":
     agent = DPAgent(gamma=0.99, n_actions=4, n_samples=25, seed=42)
 
     # Value Iteration (recommended first)
-    V_vi, Pi_vi = agent.value_iteration(theta=1e-5, synchronous=True)  # in-place often faster
-    np.savez("DP_acc_150.npz", V_vi=V_vi, Pi_vi=Pi_vi)
+    V_vi, Pi_vi = agent.value_iteration(theta=1e-6, synchronous=True)  # in-place often faster
+    np.savez("DP_0_150.npz", V_vi=V_vi, Pi_vi=Pi_vi)
     # Or Policy Iteration:
     # agent.V[:] = 0.0; agent.pi[:] = 0
     # V_pi, pi_pi = agent.policy_iteration(eval_theta=1e-5)
