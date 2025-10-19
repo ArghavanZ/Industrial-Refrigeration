@@ -114,13 +114,14 @@ class env:
 
 # ----------------- DP (with Monte Carlo expectation) -----------------
 class DPAgent:
-    def __init__(self, gamma: float = 0.99, n_actions: int = 4, n_samples: int = 20, seed: int | None = 0):
+    def __init__(self, gamma: float = 0.99, n_actions: int = 4, n_samples: int = 20, seed: int | None = 0, init: float = 0.0):
         self.gamma = gamma
         self.n_actions = n_actions
         self.n_samples = n_samples
-        self.V = np.zeros((N, N), dtype=np.float64)
         self.pi = np.zeros((N, N), dtype=np.int32)
         self.env = env(params, seed=seed)
+        self.init = init
+        self.V = np.full((N, N), init, dtype=np.float64)
 
     def _backup(self, i: int, j: int) -> Tuple[float, int]:
         """Monte-Carlo Bellman backup with n_samples for each action."""
@@ -152,7 +153,7 @@ class DPAgent:
             if synchronous:
                 self.V[:, :] = V_new
                 if iter % 1000 == 0:
-                    np.savez("DP_middle_0_150.npz", V_vi=self.V, Pi_vi=self.pi)
+                    np.savez(f"DP_middle_{self.init*-1}_150.npz", V_vi=self.V, Pi_vi=self.pi)
             if delta < theta:
                 break
         return self.V, self.pi
@@ -196,11 +197,12 @@ class DPAgent:
 
 # ---------------------- Example ----------------------
 if __name__ == "__main__":
-    agent = DPAgent(gamma=0.99, n_actions=4, n_samples=25, seed=42)
+    init = -1 
+    agent = DPAgent(gamma=0.99, n_actions=4, n_samples=25, seed=42 , init=init)
 
     # Value Iteration (recommended first)
     V_vi, Pi_vi = agent.value_iteration(theta=1e-6, synchronous=True)  # in-place often faster
-    np.savez("DP_0_150.npz", V_vi=V_vi, Pi_vi=Pi_vi)
+    np.savez(f"DP_{init*-1}_150.npz", V_vi=V_vi, Pi_vi=Pi_vi)
     # Or Policy Iteration:
     # agent.V[:] = 0.0; agent.pi[:] = 0
     # V_pi, pi_pi = agent.policy_iteration(eval_theta=1e-5)
