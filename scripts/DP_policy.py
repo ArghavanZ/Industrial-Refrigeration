@@ -153,7 +153,7 @@ class DPAgent:
             if synchronous:
                 self.V[:, :] = V_new
                 if iter % 1000 == 0:
-                    np.savez(f"DP_middle_{self.init*-1}_150.npz", V_vi=self.V, Pi_vi=self.pi)
+                    np.savez(f"DP_pi_middle_{self.init}_150.npz", V_pi=self.V, Pi_pi=self.pi)
             if delta < theta:
                 break
         return self.V, self.pi
@@ -173,6 +173,8 @@ class DPAgent:
                     v = ret / self.n_samples
                     delta = max(delta, abs(v - self.V[i, j]))
                     self.V[i, j] = v
+            if iter % 1000 == 0:
+                    np.savez(f"DP_pi_middle_{self.init}_150.npz", V_pi=self.V, Pi_pi=self.pi)
             if delta < theta:
                 break
 
@@ -207,4 +209,4 @@ if __name__ == "__main__":
     agent.V[:] = 0.0; agent.pi[:] = 0
     V_pi, Pi_pi = agent.policy_iteration(eval_theta=1e-5)
 
-    np.savez(f"DP_{init*-1}_150.npz", V_pi=V_pi, Pi_pi=Pi_pi)
+    np.savez(f"DP_pi_{init}_150.npz", V_pi=V_pi, Pi_pi=Pi_pi)
