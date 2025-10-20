@@ -160,7 +160,7 @@ class DPAgent:
 
     def policy_evaluation(self, theta: float = 1e-6, max_iters: int = 100000):
         """Iterative evaluation under current policy using Monte-Carlo expectations."""
-        for _ in range(max_iters):
+        for iter in range(max_iters):
             delta = 0.0
             for i in range(N):
                 for j in range(N):
