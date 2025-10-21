@@ -1,6 +1,10 @@
 from __future__ import annotations
 from typing import Tuple, Dict
 import numpy as np
+### show the process
+import os
+import time 
+
 
 # ---------------- Grid definition (21 x 21) ----------------
 N = 21
@@ -153,7 +157,7 @@ class DPAgent:
             if synchronous:
                 self.V[:, :] = V_new
                 if iter % 1000 == 0:
-                    np.savez(f"DP_middle_{self.init*-1}_150.npz", V_vi=self.V, Pi_vi=self.pi)
+                    np.savez(f"DP_middle_{self.init}_{self.env.rng}_150.npz", V_vi=self.V, Pi_vi=self.pi)
             if delta < theta:
                 break
         return self.V, self.pi
@@ -197,12 +201,19 @@ class DPAgent:
 
 # ---------------------- Example ----------------------
 if __name__ == "__main__":
-    init = -1 
-    agent = DPAgent(gamma=0.99, n_actions=4, n_samples=25, seed=42 , init=init)
+    init = 0
+    seed = 0
+    agent = DPAgent(gamma=0.99, n_actions=4, n_samples=25, seed=seed, init=init)
+    start = time.perf_counter()     # high-res wall clock
+
 
     # Value Iteration (recommended first)
     V_vi, Pi_vi = agent.value_iteration(theta=1e-6, synchronous=True)  # in-place often faster
-    np.savez(f"DP_{init*-1}_150.npz", V_vi=V_vi, Pi_vi=Pi_vi)
+    np.savez(f"DP_{init}_{seed}_150.npz", V_vi=V_vi, Pi_vi=Pi_vi)
+
+    end = time.perf_counter()
+    print(f"DP (init={init}, seed={seed}) completed in {end - start:.2f} seconds.")
+
     # Or Policy Iteration:
     # agent.V[:] = 0.0; agent.pi[:] = 0
     # V_pi, pi_pi = agent.policy_iteration(eval_theta=1e-5)
