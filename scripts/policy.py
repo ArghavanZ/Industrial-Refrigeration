@@ -344,11 +344,11 @@ class bang_bang_T_suction_policy(bang_bang_policy):
         #### If the setpoint is NONE, we have other forms of control! 
         self.T_suction_setpoint = T_suction_setpoint ### Array of setpoints for suction temperature for each group (bang-bang action) [If we want a fixed setpoint, otherwise it will be None]
 
-        ### Initialize actions to use as the last action when the policy is reset
-        if "evaporator_control" in self.action_space:
-            self.evap_actions = np.zeros(self.evap_num)  ### initialize all evaporators to off
-        else:
-            self.evap_actions = None
+        # ### Initialize actions to use as the last action when the policy is reset
+        # if "evaporator_control" in self.action_space:
+        #     self.evap_actions = np.zeros(self.evap_num)  ### initialize all evaporators to off
+        # else:
+        #     self.evap_actions = None
         
 
     def set_T_suction_param(self , T_suction_start , T_suction_num , T_suction_scale , T_suction_sp):
@@ -516,6 +516,97 @@ class couple_threshold_T_suction_policy(couple_threshold_policy):
                 action += ts_action * (2 ** len(self.evap_actions))
         return action
 
+class couple_T_suction_policy(couple_policy):
+
+    def __init__(self, action_space, action_type, action_mode , low_threshold, high_threshold ,room_num, evap_num , evap_list , evap_seq_list , seq_list , T_suction_setpoint = None , T_suction_start = None , T_suction_num = None , T_suction_scale = None , T_suction_sp = None ):
+        ''' This base policy is a bang bang policy with T_suction control It will turn off the cooling
+             when the room temperature is below the low threshold  and on when it is 
+            above the high threshold. If the temperature is in the range, it just do nothing (keep previous action) 
+            '''
+
+        super().__init__( action_space, action_type, action_mode , low_threshold, high_threshold, room_num, evap_num , evap_list,  evap_seq_list , seq_list )
+        self.set_T_suction_param(T_suction_start , T_suction_num , T_suction_scale , T_suction_sp)
+
+        #### If the setpoint is NONE, we have other forms of control! 
+        self.T_suction_setpoint = T_suction_setpoint ### Array of setpoints for suction temperature for each group (bang-bang action) [If we want a fixed setpoint, otherwise it will be None]
+
+
+    def set_T_suction_param(self , T_suction_start , T_suction_num , T_suction_scale , T_suction_sp):
+        
+        if self.action_type == "continuous":
+            self.T_suction_sp = np.asarray(T_suction_sp).copy() ### Array of setpoints for suction temperature for each group (continous action)
+            self.T_suction_scale = np.asarray(T_suction_scale).copy() ### Array of scale for suction temperature for each group (continous action)
+            self.T_suction_start = None ### Array of starting points for suction temperature for each group (discrete action)
+            self.T_suction_num = None ### Array of number of discrete points for suction temperature for each group (discrete action)
+        else: ### discrete action
+            self.T_suction_start = np.asarray(T_suction_start).copy() ### Array of starting points for suction temperature for each group (discrete action)
+            self.T_suction_num = np.asarray(T_suction_num).copy() ### Array of number of discrete points for suction temperature for each group (discrete action)
+            self.T_suction_sp = None ### Array of setpoints for suction temperature for each group (continous action)
+            self.T_suction_scale = None ### Array of scale for suction temperature for each group (continous action)
+
+
+        if "suction_temperature" in self.action_space:
+            self.suction_actions = np.zeros(len(self.seq_list)) ### initialize all suction temperatures to 0
+        else:
+            self.suction_actions = None
+
+
+    def get_action(self, observation):
+        
+        if "room_temperatures" in observation:
+            room_temps = np.asarray(observation["room_temperatures"]).copy()
+
+        if "evaporator_control" in self.action_space:
+            self.evap_actions = np.zeros(self.evap_num)  ### initialize all evaporators to off
+        
+        group_on = {group: False for group in self.seq_list} ### initialize all groups to off
+        if "evaporator_control" in self.action_space: ### Only has on/off control of evaporators, does not matter if continuous or discrete
+            
+            for i in range(self.room_num):
+                if room_temps[i] > self.high_threshold[i]:
+                    for evap_id in self.evap_list[i]: ### check all evaporators in the room
+                        self.evap_actions[evap_id] = 1 ### turn on evaporator if room temp is above higher bound
+                        group_on[self.group_list[evap_id]] = True ### turn on the group if any evaporator in the group is on
+
+            for group in self.seq_list:
+                if group_on[group]: ### if the group is on, turn on all evaporators in the group
+                    for list in self.evap_list: ### check the list of evaporators in each room which should belong to the same group
+                        if self.group_list[int(list[0])] == group:
+                            self.evap_actions[[i for i in list]] = 1
+
+        if "suction_temperature" in self.action_space:
+            if self.action_type == "continuous":
+                #### it is T_suction_sp if T_suction_sp is in T_suction_start + i in [0 , T_suction_num -1]
+                self.suction_actions =  (self.T_suction_setpoint - self.T_suction_sp) / self.T_suction_scale 
+            else: ### discrete action
+                for i in range(len(self.T_suction_setpoint)):
+                    TS_action_list = self.T_suction_start[i] + np.arange(self.T_suction_num[i])
+                    self.suction_actions[i] = TS_action_list[np.argmin(np.abs(TS_action_list - self.T_suction_setpoint[i]))]
+                    if self.action_mode == "joint":
+                        self.suction_actions = self.suction_actions - self.T_suction_start #### only return the index of the discrete action
+
+        return self.convert_action()
+    
+
+    def convert_action(self): ### Only support evap action 
+        action = []
+        if self.action_mode == "separate" or self.action_type == "continuous":
+            if self.evap_actions is not None:
+                action = self.evap_actions.tolist()
+            if self.suction_actions is not None:
+                action.extend(self.suction_actions.tolist())
+        elif self.action_mode == "joint":
+            action = 0
+            if self.evap_actions is not None:
+                for i in range(len(self.evap_actions)):
+                    action += self.evap_actions[i] * (2 ** i)
+            if self.suction_actions is not None:
+                ts_action = self.suction_actions[-1]
+                for i in range(len(self.suction_actions)-2,-1,-1):
+                    ts_action = ts_action * self.T_suction_num[i] + self.suction_actions[i]
+                action += ts_action * (2 ** len(self.evap_actions))
+        return action
+    
 
 class RL_policy:
     def __init__(self, model , algo):
@@ -1352,9 +1443,10 @@ class Tsuction_Trajectory(base_Trajectory):
             self.policy = bang_bang_T_suction_policy(self.action_space, self.action_type, self.action_mode , self.low_threshold , self.high_threshold , self.room_num , self.evap_num , self.evap_list , self.evap_seq_list , self.seq_list , self.T_suction_setpoint , self.T_suction_start , self.T_suction_num , self.T_suction_scale , self.T_suction_sp)
         elif self.policy_name == "couple_threshold_T_suction":
             self.policy = couple_threshold_T_suction_policy(self.action_space, self.action_type, self.action_mode , self.low_threshold , self.high_threshold ,  self.room_num , self.evap_num  , self.evap_list , self.evap_seq_list , self.seq_list , self.T_suction_setpoint , self.T_suction_start , self.T_suction_num , self.T_suction_scale , self.T_suction_sp)
+        elif self.policy_name == "couple_T_suction":
+            self.policy = couple_T_suction_policy(self.action_space, self.action_type, self.action_mode , self.low_threshold , self.high_threshold ,  self.room_num , self.evap_num  , self.evap_list , self.evap_seq_list , self.seq_list , self.T_suction_setpoint , self.T_suction_start , self.T_suction_num , self.T_suction_scale , self.T_suction_sp)
         else:
-            raise ValueError(f"Unknown policy: {self.policy_name}. Supported policies are bang_bang_T_suction and couple_threshold_T_suction")
-            
+            raise ValueError(f"Unknown policy: {self.policy_name}. Supported policies are bang_bang_T_suction, couple_threshold_T_suction, and couple_T_suction")
 
     def get_policy_params(self, low_threshold, high_threshold , T_suction_setpoint):
         
@@ -1381,16 +1473,16 @@ class Tsuction_Trajectory(base_Trajectory):
                 self.T_suction_sp = None ### Array of setpoints for suction temperature for each group (continous action)
                 self.T_suction_scale = None ### Array of scale for suction temperature for each group (continous action)
         else:
-            raise ValueError("suction_temperature must be in action_space for bang_bang_T_suction or couple_threshold_T_suction policy.")
+            raise ValueError("suction_temperature must be in action_space for bang_bang_T_suction, couple_threshold_T_suction, or couple_T_suction policy.")
         
 
     def save_info(self, mean_reward, std_reward, violation_num, on_time, off_time, Avg_room_temp):
         super().save_info(mean_reward, std_reward, violation_num, on_time, off_time, Avg_room_temp)
         with open(self.info_dir, "a") as f:
-            if self.policy_name in ["bang_bang_T_suction", "couple_threshold_T_suction"]:
+            if self.policy_name in ["bang_bang_T_suction", "couple_threshold_T_suction", "couple_T_suction"]:
                 f.write(f"High temperature thresholds for each room: {self.high_threshold}\n")
                 f.write(f"Low temperature thresholds for each room: {self.low_threshold}\n")
-                f.write(f"Suction temperature setpoints for each group: {self.T_suction_setpoint}\n")
+                f.write(f"Suction temperature setpoint control for each group: {self.T_suction_setpoint}\n")
     
     def get_trajectory(self):
 
@@ -1489,7 +1581,7 @@ class Tsuction_Trajectory(base_Trajectory):
         for seed in range(self.start_seed, self.start_seed + self.n_seed):
             
             env = Monitor(gym.wrappers.TimeLimit(Ref(params=self.env_params), max_episode_steps=self.timelimit))
-            self.policy.set_env(self.timelimit, self.env_params)
+            # self.policy.set_env(self.timelimit, self.env_params)
 
             for ep in range(self.n_ep):
                 t = 0
@@ -1646,7 +1738,7 @@ def main():
         price_offset = policy_cfg["policy"]["price_offset"] #### Price offset for each room
         lookahead = policy_cfg["policy"]["lookahead"] #### Lookahead time steps
 
-    if policy_name in ["bang_bang_T_suction", "couple_threshold_T_suction"]:
+    if policy_name in ["bang_bang_T_suction", "couple_threshold_T_suction", "couple_T_suction"]:
         low_threshold = policy_cfg["policy"]["low_threshold"] #### Low temperature thresholds for each room
         high_threshold = policy_cfg["policy"]["high_threshold"] #### High temperature thresholds for each room
         T_suction_setpoint = policy_cfg["policy"]["T_suction_sp"]
@@ -1660,7 +1752,7 @@ def main():
 
     c_name = ARGS.C_path.split("/")[-1].split(".yaml")[0] ### get config name
 
-    if policy_name in ["bang_bang", "couple","couple_threshold" , "bang_bang_T_suction" , "couple_threshold_T_suction" , "EP_couple"]:
+    if policy_name in ["bang_bang", "couple","couple_threshold" , "bang_bang_T_suction" , "couple_threshold_T_suction" , "couple_T_suction", "EP_couple"]:
         room_num = env_cfg["rooms"]["num_rooms"]
         group_num = len(env_cfg["sequencers"]["seq_list"])
         if len(high_threshold) != room_num:
@@ -1675,12 +1767,12 @@ def main():
             raise ValueError(f"Lookahead must be a positive integer. Current lookahead is {lookahead}.")
         
 
-    if policy_name in ["bang_bang_T_suction", "couple_threshold_T_suction"]:
+    if policy_name in ["bang_bang_T_suction", "couple_threshold_T_suction", "couple_T_suction" ]:
         if "suction_temperature" in env_cfg["env"]["Action_space"]:
             if len(T_suction_setpoint) != group_num:
                 raise ValueError(f"Number of suction setpoint temperatures ({len(T_suction_setpoint)}) does not match number of groups ({group_num}) in environment configuration.")
         else:
-            raise ValueError("suction_temperature must be in action_space for bang_bang_T_suction or couple_threshold_T_suction policy.")
+            raise ValueError("suction_temperature must be in action_space for bang_bang_T_suction, couple_threshold_T_suction, or couple_T_suction policy.")
         
 
     save_dir = f"{ROOT}/results/{env_cfg['env']['name']}/{c_name}/test_data/{policy_name}"

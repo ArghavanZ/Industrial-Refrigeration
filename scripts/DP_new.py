@@ -25,13 +25,13 @@ def snap2grid(x: float) -> float:
 params: Dict[str, float | np.ndarray] = {
     "room_n": 2,
     "bevap": np.array([22900, 22900]),
-    "T_suction": -27.0,
+    "T_suction": np.array([-27.0 , -26.0]),
     "T_rated": -25.0,
     "e_p": 1.0e-8,
     "delta_t": 60,
     "c_room": 40500000,
-    "Q_dist": np.array([150000, 150000]),
-    "Q_dist_delta": np.array([150000, 150000]),
+    "Q_dist": np.array([185000, 185000]),
+    "Q_dist_delta": np.array([185000, 185000]),
     "high_penalty": 1.0,
     "low_penalty": 0.0,
     "max_temp": -16.0,
@@ -49,7 +49,7 @@ class env:
         self.room_n = int(params["room_n"])
         assert self.room_n == 2, "This DP scaffold is for two rooms (2-D state)."
         self.bevap = np.asarray(params["bevap"], dtype=np.float64)
-        self.T_suction = float(params["T_suction"])
+        self.T_suction = np.asarray(params["T_suction"], dtype=np.float64)
         self.T_rated = float(params["T_rated"])
         self.Q_rated = float(params["Q_rated"])
         self.W_rated = float(params["W_rated"])
@@ -65,8 +65,9 @@ class env:
         self.lo = self.Q_dist_mean - self.Q_dist_delta
         self.hi = self.Q_dist_mean + self.Q_dist_delta
         # Derived caps at current T_suction:
-        self.Q_max = (2000000/30) * (self.T_suction - self.T_rated) + self.Q_rated
-        self.W_max = (-70) * (self.T_suction - self.T_rated)**2 + self.W_rated
+        self.Q_max = (2000000/30) * (self.T_suction - self.T_rated*np.ones_like(self.T_suction)) + self.Q_rated
+        self.W_max = (-70) * (self.T_suction - self.T_rated*np.ones_like(self.T_suction))**2 + self.W_rated
+
 
         self.state_ij: Tuple[int, int] = (0, 0)
         self.rng = np.random.default_rng(seed)
@@ -80,23 +81,25 @@ class env:
     def step_dp(self, state_ij: State, action: int , Q_dist) -> Tuple[State, float]:
         """One stochastic step. Uses self.rng for reproducibility."""
         # Decode action -> [0/1, 0/1]
-        action_array = np.array([(action >> k) & 1 for k in range(self.room_n)], dtype=np.float64)
+        T_num = int(action) // 4  # the T_suction index (0 , 1)
+        Evap_action = action % 4  # the evaporator on/off for each room
+        action_array = np.array([(Evap_action >> k) & 1 for k in range(self.room_n)], dtype=np.float64)
 
         # Current temps
         i, j = state_ij
         T_sim = np.array([room_vals[i], room_vals[j]], dtype=np.float64)
 
         # Evap cooling per room
-        Q_evap = self.bevap * (T_sim - self.T_suction) * action_array
+        Q_evap = self.bevap * (T_sim - self.T_suction[T_num]) * action_array
         Q_evap = np.maximum(Q_evap, 0.0)
 
         # Capacity limit
-        Q_total = min(np.sum(Q_evap), self.Q_max)
+        Q_total = min(np.sum(Q_evap), self.Q_max[T_num])
         if np.sum(Q_evap) > 0.0:
             Q_evap = Q_evap * (Q_total / np.sum(Q_evap))
 
         # Compressor energy cost
-        W = self.W_max * (0.61 * (Q_total / self.Q_max) + 0.39 * (Q_total > 0.0))
+        W = self.W_max[T_num] * (0.61 * (Q_total / self.Q_max[T_num]) + 0.39 * (Q_total > 0.0))
         C_cost = W * self.e_p * self.delta_t
 
         # Uniform disturbance per room
@@ -121,7 +124,7 @@ class env:
 
 # ----------------- DP (with Monte Carlo expectation) -----------------
 class DPAgent:
-    def __init__(self, gamma: float = 0.99, n_actions: int = 4, n_samples: int = 20, seed: int | None = 0, init: float = 0.0):
+    def __init__(self, gamma: float = 0.99, n_actions: int = 8, n_samples: int = 20, seed: int | None = 0, init: float = 0.0):
         self.gamma = gamma
         self.n_actions = n_actions
         self.n_samples = n_samples
@@ -166,8 +169,8 @@ class DPAgent:
                     delta = max(delta, abs(v_star - v_old))
             if synchronous:
                 self.V[:, :] = V_new
-                if iter % 1000 == 0:
-                    np.savez(f"DP_final_150_dis.npz", V_vi=self.V, Pi_vi=self.pi)
+                # if iter % 1000 == 0:
+                #     np.savez(f"DP_final_150_dis.npz", V_vi=self.V, Pi_vi=self.pi)
             if delta < theta:
                 break
         return self.V, self.pi
@@ -212,15 +215,15 @@ class DPAgent:
 # ---------------------- Example ----------------------
 if __name__ == "__main__":
     init = 0
-    seed = 0
+    seed = 42
     iter = 100
-    agent = DPAgent(gamma=0.99, n_actions=4, n_samples=20, seed=seed, init=init)
+    agent = DPAgent(gamma=0.99, n_actions=8, n_samples=20, seed=seed, init=init)
     start = time.perf_counter()     # high-res wall clock
 
 
     # Value Iteration (recommended first)
     V_vi, Pi_vi = agent.value_iteration(theta=1e-6, max_iters=iter, synchronous=True)  # in-place often faster
-    np.savez(f"DP_discrete_150_{iter}_final.npz", V_vi=V_vi, Pi_vi=Pi_vi)
+    np.savez(f"DP_Tsuction_{iter}_185.npz", V_vi=V_vi, Pi_vi=Pi_vi)
 
     end = time.perf_counter()
     print(f"DP (init={init}, seed={seed}) completed in {end - start:.2f} seconds.")
