@@ -8,8 +8,8 @@ policy:
   ### These parameters should be compatible with the env_config file [For simpler run, we give the config later]
   # If Coupled or bangbang, we set a high and low threshold (The difference is the deadband and no T_room_setpoint as we cannot control it directly)
   high_threshold: 
-    - -17  # High threshold for room temperature (in degree Celsius)
-    - -17  # High threshold for room temperature (in degree Celsius)
+    - -18.5  # High threshold for room temperature (in degree Celsius)
+    - -18.5  # High threshold for room temperature (in degree Celsius)
 
   low_threshold: ### only means for bangbang and keep or threshold mode of couple
     - -18  # Low threshold for room temperature (in degree Celsius)
