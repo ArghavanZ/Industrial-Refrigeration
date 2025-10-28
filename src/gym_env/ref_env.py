@@ -8,7 +8,7 @@ from stable_baselines3.common.utils import set_random_seed
 from helpers import helper as h ### helper functions to make devices and rooms
 from helpers import device as d ### device classes
 
-class state_counter(gym.Wrapper): 
+class StateCounter(gym.Wrapper): 
     '''
     Wrapper to count the number of times each state has been visited.
     Note: this is a very naive implementation and may not scale well with large state spaces.
@@ -16,8 +16,10 @@ class state_counter(gym.Wrapper):
     def __init__(self, env , key: str = "room_temperatures",low = -22.1, high = -15.9, bin = 62):
         super().__init__(env)
         self.N = int(bin)
-        self.counter = np.zeros((self.N, self.N), dtype=np.int64)
         self.key = key
+        self.size = self.env.unwrapped.observation_space[self.key].shape[0]
+        ### Create a counter array with shape (N, N , ... , N) for MD state space
+        self.counter = np.zeros((self.N,) * self.size, dtype=np.int64)
         self.room_vals = np.linspace(low, high, num=self.N, dtype=np.float64)
         self.V_MIN, self.V_MAX = float(self.room_vals[0]), float(self.room_vals[-1])
         self.DX = (self.V_MAX - self.V_MIN) / (self.N - 1)
@@ -31,15 +33,10 @@ class state_counter(gym.Wrapper):
         idx = int(round((x - self.V_MIN) / self.DX))
         return int(np.clip(idx, 0, self.N - 1))
 
-    def snap2grid(self, x: float) -> float:
-        return self.room_vals[self.value_to_index(x)]
-    
-
     def _bump (self, obs ):
         room_temps = np.asarray(obs["room_temperatures"]).copy()
-        i =  self.value_to_index(room_temps[0])
-        j =  self.value_to_index(room_temps[1])
-        self.counter[i,j]+=1
+        indices = tuple(self.value_to_index(temp) for temp in room_temps)
+        self.counter[indices] += 1
 
 
     def step(self, action):
@@ -53,11 +50,33 @@ class state_counter(gym.Wrapper):
     def save_npz(self, path: str):
         np.savez_compressed(path, grid=self.counter)
 
+class RewardShaper(gym.Wrapper):
+    '''
+    Wrapper to modify the reward function of the environment based on the progress_remaining.
+    '''
+    def __init__(self, env , reward_scale: float = 1.0):
+        super().__init__(env)
+        self.reward_scale = reward_scale
+
+    def reset(self, **kwargs):
+        return self.env.reset(**kwargs)
+    
+    def step(self, action):
+        obs, reward, terminated, truncated, info = self.env.step(action)
+        modified_reward = reward * self.reward_scale
+        return obs, modified_reward, terminated, truncated, info
+
+
+
 def make_env(params: dict, 
              render_mode: str = None, 
              rank: int = 0, 
              seed: int = 0,
-             timelimit: int = 1440) -> Callable:
+             timelimit: int = 1440,
+             state_counter: bool = True,
+             low: float = -22.1,
+             high: float = -15.9,
+             bin: int = 62) -> Callable:
     """
     Factory function to create a new  Refrigeration environment instance. 
     Inputs
@@ -70,6 +89,8 @@ def make_env(params: dict,
     def _init() -> gym.Env:
         env = Ref(params, render_mode)
         env = gym.wrappers.TimeLimit(env, max_episode_steps=timelimit)
+        if state_counter:
+            env = StateCounter(env, key="room_temperatures", low=low, high=high, bin=bin)
         env.reset(seed = seed + rank) ### seed the environment's RNG
         return env
 

@@ -1,0 +1,37 @@
+# meta-parameters
+project_name : ''
+run_name : ''
+seed: ''
+device: 'cuda:0'   # use the GPU
+
+model:
+  name: 'PPO'
+  net_arch: [128, 128]
+  policy: "MultiInputPolicy"            # use MultiInputPolicy only if obs is a dict
+  learning_rate: 3e-4            # start LR
+  learning_rate_end: 1e-4        # linearly anneal to this
+  n_steps: 16384                   # rollout per env
+  batch_size: 4096                # must divide n_envs*n_steps
+  n_epochs: 10
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_range: [0.2, 0.1]          # piecewise: 0.2 then 0.1
+  clip_progress: [0.8]            # switch when progress_remaining <= 0.8 (i.e., after ~20% of training)
+  ent_coef: 0.01
+  vf_coef: 0.5
+  max_grad_norm: 0.5
+  tensorboard_log: "PPO"
+  verbose: 2
+
+env_setup:
+  num_proc: 16                    # try 24–32 and compare FPS
+  timelimit: 1440
+
+algo:
+  name: "default"
+  total_timesteps: 30000000
+  log_interval: 1
+
+train:
+  reward_normalization: true
+  normalize_observations: true
