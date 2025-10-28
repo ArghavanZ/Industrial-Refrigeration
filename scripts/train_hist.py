@@ -12,8 +12,15 @@ import argparse
 import yaml
 import torch
 import gymnasium as gym
+import multiprocessing as mp
 from typing import Callable
-
+# os.environ["OMP_NUM_THREADS"] = "1"
+# os.environ["MKL_NUM_THREADS"] = "1"
+# torch.set_num_threads(1)
+# try:
+#     mp.set_start_method("forkserver", force=True)
+# except RuntimeError:
+#     pass
 
 # import stablebaselines
 from stable_baselines3 import PPO, SAC, DDPG, TD3, A2C ### All support continous actions!
@@ -23,7 +30,7 @@ from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.utils import set_random_seed
 from stable_baselines3.common.callbacks import (
-    CallbackList, CheckpointCallback, EvalCallback, BaseCallback)
+    CallbackList, CheckpointCallback, EvalCallback , BaseCallback)
 from wandb.integration.sb3 import WandbCallback 
 
 # import internal packages
@@ -31,7 +38,6 @@ from wandb.integration.sb3 import WandbCallback
 from gym_env.ref_env import Ref, make_env
 from helpers import helper as h
 from helpers import device as d
-
 
 class SaveStateHistCallback(BaseCallback):
     """
@@ -76,6 +82,29 @@ class SaveStateHistCallback(BaseCallback):
         if self.verbose:
             print(f"[SaveStateHistCallback] Saved state visit grid to {path}")
 
+# class SaveStateHistCallback(BaseCallback):
+#     """
+#     Custom callback for saving state visitation histogram at regular intervals.
+#     """
+#     def __init__(self, save_path: str, verbose=0):
+#         super(SaveStateHistCallback, self).__init__(verbose) ## verbose 0 is silent. 
+#         self.save_path = save_path
+
+#     def _on_training_end(self) -> None:
+#         # Get one counter per worker process
+#         counters = self.model.get_env().env_method("get_counter")
+#         # Aggregate (workers may return None if wrapper wasn’t applied)
+#         counters = [c for c in counters if c is not None]
+#         if len(counters) == 0:
+#             if self.verbose:
+#                 print("No counters returned; is state_counter in make_env?")
+#             return True
+#         total = np.sum(counters, axis=0).astype(np.int64)
+#         os.makedirs(os.path.dirname(self.save_path), exist_ok=True)
+#         np.savez_compressed(self.save_path, hist=total)
+#         if self.verbose:
+#             print(f"Saved state visit grid to {self.save_path}")
+#         return True
 
 
 def lr_linear(start: float, end: float) -> Callable[[float], float]:
@@ -129,16 +158,35 @@ def train(env_cfg, hp_cfg, exp_dir):
 
     timelimit = int(env_cfg["env"]["Total_time"]/env_cfg["env"]["time_step"])
     # Create the vectorized environment (expand for readability)
-    env_list = [
-        make_env(
-            params = env_params,
-            render_mode=None,
-            rank=rank,
-            seed=hp_cfg["seed"] * 100,  # Guarantee no repeats
-            timelimit= timelimit,  # Set the time limit for each environment
-        )
-        for rank in range(num_proc)
-    ]
+
+    state_counter = hp_cfg["train"].get("Hist_save", False)
+    if state_counter:
+        print("Enabling state visitation histogram counting in environment.")
+        env_list = [
+            make_env(
+                params = env_params,
+                render_mode=None,
+                rank=rank,
+                seed=hp_cfg["seed"] * 100,  # Guarantee no repeats
+                timelimit= timelimit,  # Set the time limit for each environment
+                state_counter=True,
+                low=hp_cfg["train"].get("Hist_low", -22.1),
+                high=hp_cfg["train"].get("Hist_high", -15.9),
+                bin=hp_cfg["train"].get("Hist_bins", 62)
+            )
+            for rank in range(num_proc)
+        ]
+    else:
+        env_list = [
+            make_env(
+                params = env_params,
+                render_mode=None,
+                rank=rank,
+                seed=hp_cfg["seed"] * 100,  # Guarantee no repeats
+                timelimit= timelimit,  # Set the time limit for each environment
+            )
+            for rank in range(num_proc)
+        ]
 
     set_random_seed(hp_cfg["seed"])
     # Pass the list of callables directly to SubprocVecEnv
@@ -150,17 +198,33 @@ def train(env_cfg, hp_cfg, exp_dir):
         make_env(rank=0, params=env_params, render_mode=None, seed=hp_cfg["seed"]*10000, timelimit=timelimit)
     ])
     eval_env = VecNormalize(eval_env, norm_obs=hp_cfg["train"]["normalize_observations"], norm_reward=False, clip_obs=10.)
-    eval_env = VecMonitor(eval_env)
+    
     eval_env.obs_rms = env.obs_rms.copy()
-    eval_env.ret_rms = env.ret_rms.copy()
+    eval_env.training = False
+
+
+    eval_env = VecMonitor(eval_env)
+
 
     # SETUP MODEL
     algo_name = hp_cfg["model"]["name"]
     raw_arch = hp_cfg["model"]["net_arch"]   # {'pi': [128,128], 'vf': [256,256]} or [256,256]
     activation = hp_cfg["model"].get("activation", "tanh").lower()
-    act_cls = torch.nn.Tanh if activation == "tanh" else torch.nn.ReLU
 
-
+    activations = {
+    "tanh": torch.nn.Tanh,
+    "relu": torch.nn.ReLU,
+    "leaky_relu": torch.nn.LeakyReLU,
+    "elu": torch.nn.ELU,
+    "gelu": torch.nn.GELU,
+}
+    try:
+        act_cls = activations[activation]
+    except KeyError:
+        raise ValueError(
+            f"Unsupported activation '{activation}'. "
+            f"Choose one of {list(activations.keys())}."
+        )
 
     if isinstance(raw_arch, dict):
     # separate heads -> SB3 expects it wrapped in a list
@@ -305,8 +369,16 @@ def train(env_cfg, hp_cfg, exp_dir):
     model_save_freq=1000,   # or 0 if you rely only on CheckpointCallback
     gradient_save_freq=0,
     verbose=2)
+    
 
-    callback = CallbackList([ckpt_cb, eval_cb, wandb_cb])
+    save_state_hist_cb = SaveStateHistCallback(
+        save_path=f"{exp_dir}/state_hist.npz",
+        verbose=1
+    )
+    if not state_counter:
+        save_state_hist_cb = None
+
+    callback = CallbackList([ckpt_cb, eval_cb, wandb_cb, save_state_hist_cb])
     # Train the model
     model.learn(
         total_timesteps=hp_cfg["algo"]["total_timesteps"], 
@@ -321,8 +393,9 @@ def train(env_cfg, hp_cfg, exp_dir):
             break
         
         env = env.venv
-        
+    
 
+    env.close()
     return None
 
 
