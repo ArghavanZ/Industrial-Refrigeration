@@ -10,13 +10,13 @@ sequencers: {'seq_list': ['freezer'], 'sequence_order': 'None', 'fixed_order': '
 compressors: {'num_compressors': [1], 'freezer': {'compressor_model': ['base'], 'c_c_coeff': [66666.6667], 'Q_rated': [600000], 'T_suction_rated': [-25], 'Q_min_clip': [100000.0], 'Q_max_clip': [1500000.0], 'c_w_coeff1': [-70], 'c_w_coeff2': [0], 'W_rated': [100000.0], 'W_min_clip': [80000.0], 'c_coeff1': [0.61], 'c_coeff2': [0.39], 'T_discharge': 'None'}}
 reward: {'temp_penalty': {'low': [0.0, 0.0], 'high': [1.0, 1.0]}, 'electricity_price': 1e-08, 'electricity_price_data': 'None', 'price_num': 30, 'min_price': 1e-08, 'max_price': 5e-08, 'reward_type': 'linear', 'reward_scale': 1, 'utilization_penalty': 'None'}
 Evaluation results:
-Mean reward over 600 episodes: -64.08013974058191
-Std reward over 600 episodes: 47.36381420315784
-Violation number for each room over 600 episodes: [[557   3]
- [478   5]]
-Average on time for each evaporator over 600 episodes: [99.06130081 99.06130081]
-Total off time for each evaporator over 600 episodes: [5773 5773]
-Average room temperature for each room over 600 episodes: [-17.89393855 -17.89843095]
-High temperature thresholds for each room: [-18.5 -18.5]
+Mean reward over 600 episodes: -68.1258792497559
+Std reward over 600 episodes: 55.204796946439856
+Violation number for each room over 600 episodes: [[712   2]
+ [637   5]]
+Average on time for each evaporator over 600 episodes: [96.89593496 96.89593496]
+Total off time for each evaporator over 600 episodes: [19090 19090]
+Average room temperature for each room over 600 episodes: [-17.72808492 -17.73246003]
+High temperature thresholds for each room: [-18 -18]
 Low temperature thresholds for each room: [-18 -18]
 Suction temperature setpoint control for each group: [-26.]

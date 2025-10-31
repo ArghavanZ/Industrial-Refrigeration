@@ -387,8 +387,8 @@ def get_action (action , Action_spaces , Action_type , Action_mode , evaporators
                 if "suction_temperature" in Action_spaces:
                     num_evaps = len(evaporators)
                     num_t_suction = len(sequencers)
-                    T_suction_num = np.array(seq_T_num) ### number of discrete values for each sequencer
-                    T_suction_start = np.array(seq_T_start) ### starting values for each sequencer
+                    T_suction_num = np.asanyarray(seq_T_num) ### number of discrete values for each sequencer
+                    T_suction_start = np.asanyarray(seq_T_start) ### starting values for each sequencer
                     evap_actions = [0] * num_evaps
                     suction_actions = [0] * num_t_suction
                     evap_act = action % (2 ** num_evaps) 

@@ -301,12 +301,14 @@ class Ref(gym.Env):
         ### The function to decode the input action based on the action space and type, 
         ### Currently it only supports setting evaporator on/off and suction temperature setpoint if in action space
         evap_actions , sequencer_actions = h.get_action (action, self.action_spaces, self.action_type , self.action_mode , self.evaporators , self.sequencers , self.sequencers_T_num , self.sequencers_T_start)
-        
+
+        # if self.t % 512 == 0:
+        #     print(f"At time {self.t}, received action: {action}, decoded to evap_actions: {evap_actions}, sequencer_actions: {sequencer_actions}")
 
         if "suction_temperature" in self.action_spaces:
             for i , seq in enumerate(self.sequencers):
                 if seq.check_time(self.t - 1):
-                    seq.get_T_suction(sequencer_actions[i])
+                    seq.sequencer_step(sequencer_actions[i])
 
         #-------------------------------------------------------------------------------
         #### Compressor
