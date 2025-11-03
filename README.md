@@ -55,6 +55,8 @@ s is the starting random seed and l is the number of them (for now keep random s
 ```bash
 conda activate online_rl
 python scripts/train.py --start_seed s --n_seeds l --HP_path hyperparameters/H1.yaml --C_path env_config/discrete_joint/C1.yaml 
+python scripts/train_hist.py --start_seed s --n_seeds l --HP_path hyperparameters/H_H01.yaml --C_path env_config/discrete_joint/C1_203.yaml 
+
 ```
 
 
